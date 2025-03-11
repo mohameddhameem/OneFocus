@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Outer circle representing the timer -->
+  <circle cx="100" cy="100" r="90" fill="none" stroke="#41b883" stroke-width="8"/>
+  
+  <!-- Timer progress arc (showing about 75% completion) -->
+  <path d="M100,10 A90,90 0 1,1 25,100" fill="none" stroke="#41b883" stroke-width="14" stroke-linecap="round"/>
+  
+  <!-- Inner focus point/target -->
+  <circle cx="100" cy="100" r="30" fill="#34495e"/>
+  
+  <!-- Focus rays -->
+  <circle cx="100" cy="100" r="15" fill="#41b883"/>
+</svg>
