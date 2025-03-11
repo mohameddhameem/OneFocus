@@ -1,5 +1,5 @@
-# Build stage
-FROM node:lts-alpine as build-stage
+# Single stage build
+FROM node:lts-alpine
 
 # Set working directory
 WORKDIR /app
@@ -16,17 +16,8 @@ COPY . .
 # Build the app for production
 RUN npm run build
 
-# Production stage
-FROM nginx:stable-alpine as production-stage
+# Expose port 4173 (default Vite preview port)
+EXPOSE 4173
 
-# Copy built assets from the build stage
-COPY --from=build-stage /app/dist /usr/share/nginx/html
-
-# Copy custom nginx config if needed
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-# Start Nginx server
-CMD ["nginx", "-g", "daemon off;"]
+# Start the app using Vite preview
+CMD ["npm", "run", "preview", "--", "--host", "0.0.0.0"]
