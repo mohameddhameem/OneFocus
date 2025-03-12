@@ -3,15 +3,15 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import TimerSettings from './TimerSettings.vue';
 
 // Define props for settings visibility
-const props = defineProps({
+const props = defineProps({ // eslint-disable-line
   showSettings: {
     type: Boolean,
     default: false
   }
-});
+}); // eslint-disable-line no-unused-vars
 
 // Define emits for closing settings
-const emit = defineEmits(['closeSettings']);
+const emit = defineEmits(['closeSettings']); // eslint-disable-line
 
 // Load saved settings from localStorage or use defaults
 const loadSettings = () => {
@@ -83,6 +83,7 @@ const timerDisplayClass = computed(() => {
 });
 
 // Computed properties for UI display
+// eslint-disable-next-line no-unused-vars
 const currentMode = computed(() => {
   switch (timerMode.value) {
     case 'pomodoro': return 'Focus';

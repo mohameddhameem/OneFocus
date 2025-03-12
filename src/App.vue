@@ -2,16 +2,13 @@
 import PomodoroTimer from './components/PomodoroTimer.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
 import { ref } from 'vue';
-
 // Settings state
 const showSettings = ref(false);
-
 // Open settings modal
 const openSettings = () => {
   showSettings.value = true;
 };
 </script>
-
 <template>
   <div class="pomodoro-container">
     <div class="top-right-controls">
@@ -32,7 +29,6 @@ const openSettings = () => {
     </main>
   </div>
 </template>
-
 <style scoped>
 .pomodoro-container {
   max-width: 500px;
@@ -46,7 +42,6 @@ const openSettings = () => {
   justify-content: center;
   position: relative; /* For absolute positioning of controls */
 }
-
 .top-right-controls {
   position: fixed;
   top: 1rem;
@@ -55,7 +50,6 @@ const openSettings = () => {
   gap: 0.5rem;
   z-index: 100;
 }
-
 .settings-button {
   background: none;
   border: none;
@@ -69,23 +63,19 @@ const openSettings = () => {
   justify-content: center;
   transition: all 0.2s ease;
 }
-
 .settings-button:hover {
   opacity: 1;
   background-color: var(--color-background-soft);
 }
-
 header {
   margin-bottom: 1.5rem;
   padding-top: 2rem; /* Add padding to account for the fixed position controls */
 }
-
 header h1 {
   font-size: 2.5rem;
   text-align: center;
   margin: 0 auto;
 }
-
 @media (max-width: 480px) {
   .pomodoro-container {
     padding: 0.75rem;
@@ -114,7 +104,6 @@ header h1 {
     height: 18px;
   }
 }
-
 @media (max-width: 320px) {
   header h1 {
     font-size: 1.5rem;

@@ -1,9 +1,11 @@
 <script setup>
 import { ref } from 'vue';
 
+// eslint-disable-next-line
 const emit = defineEmits(['save']);
 
 // Initialize with default values from props
+// eslint-disable-next-line
 const props = defineProps({
   focusDuration: {
     type: Number,

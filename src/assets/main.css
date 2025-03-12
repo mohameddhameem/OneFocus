@@ -1,12 +1,10 @@
 @import './base.css';
-
 html, body {
   height: 100%;
   margin: 0;
   padding: 0;
   overflow-x: hidden;
 }
-
 #app {
   max-width: 1280px;
   margin: 0 auto;
@@ -17,7 +15,6 @@ html, body {
   flex-direction: column;
   justify-content: center;
 }
-
 /* Styling for the Pomodoro Timer component */
 .timer-display {
   padding: 2rem;
@@ -26,20 +23,17 @@ html, body {
   box-shadow: 0 4px 8px var(--timer-shadow);
   transition: background-color 0.5s, box-shadow 0.5s;
 }
-
 .timer {
   font-size: 5rem;
   font-weight: bold;
   margin-bottom: 2rem;
   font-family: monospace;
 }
-
 .controls {
   display: flex;
   gap: 1rem;
   justify-content: center;
 }
-
 button {
   padding: 0.75rem 2rem;
   font-size: 1.2rem;
@@ -48,25 +42,20 @@ button {
   cursor: pointer;
   transition: background-color 0.3s;
 }
-
 button.start {
   background-color: var(--button-start);
   color: white;
 }
-
 button.start:hover {
   background-color: var(--button-start-hover);
 }
-
 button.reset {
   background-color: var(--button-reset);
   color: white;
 }
-
 button.reset:hover {
   background-color: var(--button-reset-hover);
 }
-
 /* Additional responsive styles */
 @media (max-height: 500px) {
   #app {
@@ -81,7 +70,6 @@ button.reset:hover {
     margin-bottom: 1rem;
   }
 }
-
 @media (max-width: 480px) {
   #app {
     padding: 0.5rem;
