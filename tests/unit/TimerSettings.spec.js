@@ -1,5 +1,4 @@
 import { mount } from '@vue/test-utils'
-import { describe, it, expect, beforeEach } from 'vitest'
 import TimerSettings from '../../src/components/TimerSettings.vue'
 
 describe('TimerSettings.vue', () => {

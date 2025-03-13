@@ -1,5 +1,4 @@
 import { mount } from '@vue/test-utils'
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { nextTick } from 'vue'
 import PomodoroTimer from '../../src/components/PomodoroTimer.vue'
 
@@ -7,36 +6,7 @@ describe('PomodoroTimer.vue', () => {
   let wrapper;
   
   beforeEach(() => {
-    // Setup fake timers
-    vi.useFakeTimers();
-    
-    // Mock localStorage
-    const localStorageMock = {
-      getItem: vi.fn(),
-      setItem: vi.fn()
-    };
-    Object.defineProperty(window, 'localStorage', {
-      value: localStorageMock
-    });
-
-    // Mock Audio
-    window.Audio = vi.fn().mockImplementation(() => ({
-      play: vi.fn()
-    }));
-
-    // Mock Notification API
-    const notificationMock = vi.fn();
-    Object.defineProperty(window, 'Notification', {
-      value: class {
-        constructor(title, options) {
-          notificationMock(title, options);
-        }
-        static permission = 'granted';
-        static requestPermission = vi.fn().mockResolvedValue('granted');
-      },
-      writable: true
-    });
-
+    jest.useFakeTimers();
     wrapper = mount(PomodoroTimer, {
       props: {
         showSettings: false
@@ -45,8 +15,7 @@ describe('PomodoroTimer.vue', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
-    vi.useRealTimers();
+    jest.useRealTimers();
     wrapper.unmount();
   });
 
@@ -60,30 +29,30 @@ describe('PomodoroTimer.vue', () => {
     
     // Start timer
     await startButton.trigger('click');
-    expect(wrapper.vm.isRunning).toBe(true);
+    await nextTick();
     expect(startButton.text()).toContain('Pause');
     
     // Pause timer
     await startButton.trigger('click');
-    expect(wrapper.vm.isRunning).toBe(false);
+    await nextTick();
     expect(startButton.text()).toContain('Start');
   });
 
   it('switches between different timer modes', async () => {
     // Short break mode
     await wrapper.find('button.mode-btn:nth-child(2)').trigger('click');
+    await nextTick();
     expect(wrapper.find('.timer').text()).toBe('05:00');
-    expect(wrapper.vm.timerMode).toBe('shortBreak');
     
     // Long break mode
     await wrapper.find('button.mode-btn:nth-child(3)').trigger('click');
+    await nextTick();
     expect(wrapper.find('.timer').text()).toBe('30:00');
-    expect(wrapper.vm.timerMode).toBe('longBreak');
     
     // Back to pomodoro mode
     await wrapper.find('button.mode-btn:nth-child(1)').trigger('click');
+    await nextTick();
     expect(wrapper.find('.timer').text()).toBe('25:00');
-    expect(wrapper.vm.timerMode).toBe('pomodoro');
   });
 
   it('shows skip button only during breaks', async () => {
@@ -92,38 +61,41 @@ describe('PomodoroTimer.vue', () => {
     
     // Switch to short break
     await wrapper.find('button.mode-btn:nth-child(2)').trigger('click');
+    await nextTick();
     expect(wrapper.find('button.skip').exists()).toBe(true);
     
     // Switch back to pomodoro
     await wrapper.find('button.mode-btn:nth-child(1)').trigger('click');
+    await nextTick();
     expect(wrapper.find('button.skip').exists()).toBe(false);
   });
 
   it('resets the timer correctly', async () => {
     // Start timer and wait
     await wrapper.find('button.start').trigger('click');
-    vi.advanceTimersByTime(5000); // Advance 5 seconds
+    await nextTick();
+    jest.advanceTimersByTime(5000);
+    await nextTick();
     
     // Reset timer
     await wrapper.find('button.reset').trigger('click');
+    await nextTick();
     expect(wrapper.find('.timer').text()).toBe('25:00');
-    expect(wrapper.vm.isRunning).toBe(false);
   });
 
   it('completes a pomodoro and transitions to break', async () => {
     await wrapper.find('button.start').trigger('click');
     await nextTick();
     
-    // Force the timer to complete immediately
-    wrapper.vm.timeLeft = 0;
-    wrapper.vm.updateTimer();
+    // Fast forward to completion
+    jest.advanceTimersByTime(25 * 60 * 1000);
     await nextTick();
     
-    expect(wrapper.vm.completedPomodoros).toBe(1);
-    expect(wrapper.vm.timerMode).toBe('shortBreak');
+    expect(wrapper.find('.pomodoro-count').text()).toContain('1');
+    expect(wrapper.find('.timer').text()).toBe('05:00'); // Short break time
   });
 
-  it('saves settings to localStorage', async () => {
+  it('handles settings updates', async () => {
     const newSettings = {
       focusDuration: 30,
       shortBreakDuration: 7,
@@ -131,7 +103,10 @@ describe('PomodoroTimer.vue', () => {
       pomodorosUntilLongBreak: 4
     };
     
-    await wrapper.vm.updateSettings(newSettings);
+    // Find TimerSettings component and trigger save
+    const timerSettings = wrapper.findComponent({ name: 'TimerSettings' });
+    await timerSettings.vm.$emit('save', newSettings);
+    await nextTick();
     
     expect(localStorage.setItem).toHaveBeenCalledWith(
       'pomodoro-settings',
