@@ -132,19 +132,21 @@ const startTimer = () => {
   } else {
     // Start the timer
     isRunning.value = true;
-    timerInterval.value = setInterval(() => {
-      if (timeLeft.value > 0) {
-        timeLeft.value--;
-      } else {
-        // Timer completed
-        clearInterval(timerInterval.value);
-        timerInterval.value = null;
-        isRunning.value = false;
-        
-        // Handle completion based on current mode
-        handleTimerCompletion();
-      }
-    }, 1000);
+    updateTimer(); // Initial update
+    timerInterval.value = setInterval(updateTimer, 1000);
+  }
+};
+
+const updateTimer = () => {
+  if (timeLeft.value > 0) {
+    timeLeft.value--;
+  }
+  if (timeLeft.value === 0) {
+    // Timer completed
+    clearInterval(timerInterval.value);
+    timerInterval.value = null;
+    isRunning.value = false;
+    handleTimerCompletion();
   }
 };
 

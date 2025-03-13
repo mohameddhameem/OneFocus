@@ -38,13 +38,21 @@ const pomodoroCount = ref(props.pomodorosUntilLongBreak);
 // Save settings
 const saveSettings = () => {
   const settings = {
-    focusDuration: parseInt(focus.value) || 25,
-    shortBreakDuration: parseInt(shortBreak.value) || 5,
-    longBreakDuration: parseInt(longBreak.value) || 30,
-    pomodorosUntilLongBreak: parseInt(pomodoroCount.value) || 3,
+    focusDuration: validateInput(parseInt(focus.value), 1, 120, 25),
+    shortBreakDuration: validateInput(parseInt(shortBreak.value), 1, 60, 5),
+    longBreakDuration: validateInput(parseInt(longBreak.value), 1, 120, 30),
+    pomodorosUntilLongBreak: validateInput(parseInt(pomodoroCount.value), 1, 10, 3),
   };
   
   emit('save', settings);
+};
+
+// Input validation helper
+const validateInput = (value, min, max, defaultValue) => {
+  if (isNaN(value) || value < min || value > max) {
+    return defaultValue;
+  }
+  return value;
 };
 
 // Reset to defaults
