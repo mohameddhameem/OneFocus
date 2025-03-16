@@ -100,6 +100,14 @@ const formattedTime = () => {
   return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
+// Update document title with timer and mode
+const updateDocumentTitle = () => {
+  const time = formattedTime();
+  const mode = timerMode.value === 'pomodoro' ? 'Focus' : 
+    timerMode.value === 'shortBreak' ? 'Short Break' : 'Long Break';
+  document.title = `${time} - ${mode} | OneFocus`;
+};
+
 // Set timer based on mode
 const setTimerMode = (mode) => {
   timerMode.value = mode;
@@ -120,6 +128,7 @@ const setTimerMode = (mode) => {
     default:
       timeLeft.value = POMODORO_TIME.value;
   }
+  updateDocumentTitle(); // Update title when mode changes
 };
 
 // Timer control functions
@@ -135,11 +144,13 @@ const startTimer = () => {
     updateTimer(); // Initial update
     timerInterval.value = setInterval(updateTimer, 1000);
   }
+  updateDocumentTitle(); // Update title when timer starts/pauses
 };
 
 const updateTimer = () => {
   if (timeLeft.value > 0) {
     timeLeft.value--;
+    updateDocumentTitle(); // Update title every second
   }
   if (timeLeft.value === 0) {
     // Timer completed
@@ -151,6 +162,12 @@ const updateTimer = () => {
 };
 
 const handleTimerCompletion = () => {
+  // Stop the timer completely
+  clearInterval(timerInterval.value);
+  timerInterval.value = null;
+  isRunning.value = false;
+  timeLeft.value = 0;
+
   if (timerMode.value === 'pomodoro') {
     // Increment completed pomodoros counter
     completedPomodoros.value++;
@@ -188,6 +205,7 @@ const resetTimer = () => {
     default:
       timeLeft.value = POMODORO_TIME.value;
   }
+  updateDocumentTitle(); // Update title when timer resets
 };
 
 const resetAllTimers = () => {
