@@ -13,7 +13,7 @@ module.exports = {
     '**/__tests__/*.[jt]s?(x)'
   ],
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
-  transformIgnorePatterns: ['/node_modules/(?!vue-router|@babel|vuex)'],
+  transformIgnorePatterns: ['/node_modules/(?!vue-router|@babel|vuex|gapi-script)'],
   testEnvironmentOptions: {
     customExportConditions: ['node', 'node-addons']
   },

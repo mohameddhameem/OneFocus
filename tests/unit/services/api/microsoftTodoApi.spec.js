@@ -1,8 +1,15 @@
 import '@microsoft/microsoft-graph-client';
 import microsoftTodoApi from '../../../../src/services/api/microsoftTodoApi';
-// import { microsoftAuthService } from '../../../../src/services/auth/microsoftAuth';
-// import { MicrosoftTodoApi } from '@/services/api/microsoftTodoApi';
 import { Client } from '@microsoft/microsoft-graph-client';
+// Define mockGraphApi before any imports or mocks that use it
+const mockGraphApi = {
+  get: jest.fn(),
+  post: jest.fn(),
+  patch: jest.fn(),
+  delete: jest.fn()
+};
+
+
 
 // Mock the auth service
 jest.mock('../../../../src/services/auth/microsoftAuth', () => ({
@@ -12,13 +19,6 @@ jest.mock('../../../../src/services/auth/microsoftAuth', () => ({
 }), { virtual: true });
 
 // Mock the Microsoft Graph client
-const mockGraphApi = {
-  get: jest.fn(),
-  post: jest.fn(),
-  patch: jest.fn(),
-  delete: jest.fn()
-};
-
 jest.mock('@microsoft/microsoft-graph-client', () => ({
   Client: {
     init: jest.fn().mockReturnValue({
