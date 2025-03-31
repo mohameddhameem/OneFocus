@@ -1,17 +1,60 @@
 <script setup>
 import PomodoroTimer from './components/PomodoroTimer.vue';
 import ThemeToggle from './components/ThemeToggle.vue';
-import { ref } from 'vue';
+import TaskIntegrationSelector from './components/tasks/TaskIntegrationSelector.vue';
+import TaskList from './components/tasks/TaskList.vue';
+import { ref, watch } from 'vue';
+
 // Settings state
 const showSettings = ref(false);
+
+// Task integration state
+const activeIntegration = ref('local'); // Default to local storage
+const activeTask = ref(null);
+
+// Template refs
+const taskListRef = ref(null);
+
 // Open settings modal
 const openSettings = () => {
   showSettings.value = true;
 };
+
+// Handle integration change
+const handleIntegrationChange = (integration) => {
+  activeIntegration.value = integration || 'local'; // Default to local if no integration provided
+  // Reset active task when changing integration
+  activeTask.value = null;
+};
+
+// Handle starting a task
+const handleStartTask = (task) => {
+  activeTask.value = task;
+};
+
+// Handle pomodoro completion
+const handlePomodoroComplete = () => {
+  if (activeTask.value) {
+    // Forward the pomodoro completion to the task list
+    if (taskListRef.value) {
+      taskListRef.value.handlePomodoroComplete(activeTask.value);
+    }
+  }
+};
+
+// When a task is started, we can programmatically start the timer
+watch(activeTask, (newTask) => {
+  if (newTask) {
+    // You could add logic here to automatically start the timer
+    // when a task is selected, if desired
+  }
+});
 </script>
+
 <template>
   <div class="pomodoro-container">
     <div class="top-right-controls">
+      <TaskIntegrationSelector @integration-changed="handleIntegrationChange" />
       <button class="settings-button" @click="openSettings" aria-label="Settings">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="3"></circle>
@@ -25,10 +68,29 @@ const openSettings = () => {
       <h1>OneFocus</h1>
     </header>
     <main>
-      <PomodoroTimer :show-settings="showSettings" @close-settings="showSettings = false" />
+      <!-- Active task display -->
+      <div v-if="activeTask" class="active-task">
+        <div class="active-task-label">Current Task:</div>
+        <div class="active-task-title">{{ activeTask.title }}</div>
+      </div>
+      
+      <!-- Pomodoro Timer -->
+      <PomodoroTimer 
+        :show-settings="showSettings" 
+        @close-settings="showSettings = false"
+        @pomodoro-complete="handlePomodoroComplete"
+      />
+      
+      <!-- Task List (always shown, using local storage by default) -->
+      <TaskList 
+        ref="taskListRef"
+        :integration="activeIntegration"
+        @start-task="handleStartTask"
+      />
     </main>
   </div>
 </template>
+
 <style scoped>
 .pomodoro-container {
   max-width: 500px;
@@ -41,7 +103,10 @@ const openSettings = () => {
   min-height: 100%;
   justify-content: center;
   position: relative; /* For absolute positioning of controls */
+  /* Adding the missing custom property definition */
+  --color-text-light: rgba(var(--color-text), 0.7);
 }
+
 .top-right-controls {
   position: fixed;
   top: 1rem;
@@ -50,6 +115,7 @@ const openSettings = () => {
   gap: 0.5rem;
   z-index: 100;
 }
+
 .settings-button {
   background: none;
   border: none;
@@ -63,19 +129,44 @@ const openSettings = () => {
   justify-content: center;
   transition: all 0.2s ease;
 }
+
 .settings-button:hover {
   opacity: 1;
   background-color: var(--color-background-soft);
 }
+
 header {
   margin-bottom: 1.5rem;
   padding-top: 2rem; /* Add padding to account for the fixed position controls */
 }
+
 header h1 {
   font-size: 2.5rem;
   text-align: center;
   margin: 0 auto;
 }
+
+/* Active task styling */
+.active-task {
+  background-color: var(--color-background-soft);
+  border-radius: 8px;
+  padding: 0.75rem;
+  margin-bottom: 1.5rem;
+  border-left: 4px solid var(--pomodoro-color);
+  text-align: left;
+}
+
+.active-task-label {
+  font-size: 0.85rem;
+  color: var(--color-text-light);
+  margin-bottom: 0.25rem;
+}
+
+.active-task-title {
+  font-weight: 500;
+  font-size: 1.1rem;
+}
+
 @media (max-width: 480px) {
   .pomodoro-container {
     padding: 0.75rem;
@@ -103,7 +194,17 @@ header h1 {
     width: 18px;
     height: 18px;
   }
+  
+  .active-task {
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  .active-task-title {
+    font-size: 1rem;
+  }
 }
+
 @media (max-width: 320px) {
   header h1 {
     font-size: 1.5rem;

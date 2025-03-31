@@ -10,8 +10,8 @@ const props = defineProps({ // eslint-disable-line
   }
 }); // eslint-disable-line no-unused-vars
 
-// Define emits for closing settings
-const emit = defineEmits(['closeSettings']); // eslint-disable-line
+// Define emits for closing settings and pomodoro completion
+const emit = defineEmits(['closeSettings', 'pomodoroComplete']); // eslint-disable-line
 
 // Load saved settings from localStorage or use defaults
 const loadSettings = () => {
@@ -172,6 +172,9 @@ const handleTimerCompletion = () => {
     // Increment completed pomodoros counter
     completedPomodoros.value++;
     notifyCompletion('Work session completed!', 'Time for a break.');
+    
+    // Emit pomodoro completion event
+    emit('pomodoroComplete');
 
     // Determine which break to take
     if (completedPomodoros.value % POMODOROS_UNTIL_LONG_BREAK.value === 0) {
