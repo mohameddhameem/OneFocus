@@ -1,15 +1,9 @@
+// Define mockGraphApi as a let so it can be reassigned
+let mockGraphApi;
+
 import '@microsoft/microsoft-graph-client';
 import microsoftTodoApi from '../../../../src/services/api/microsoftTodoApi';
 import { Client } from '@microsoft/microsoft-graph-client';
-// Define mockGraphApi before any imports or mocks that use it
-const mockGraphApi = {
-  get: jest.fn(),
-  post: jest.fn(),
-  patch: jest.fn(),
-  delete: jest.fn()
-};
-
-
 
 // Mock the auth service
 jest.mock('../../../../src/services/auth/microsoftAuth', () => ({
@@ -19,16 +13,29 @@ jest.mock('../../../../src/services/auth/microsoftAuth', () => ({
 }), { virtual: true });
 
 // Mock the Microsoft Graph client
-jest.mock('@microsoft/microsoft-graph-client', () => ({
-  Client: {
-    init: jest.fn().mockReturnValue({
-      api: jest.fn().mockReturnValue(mockGraphApi)
-    })
-  }
-}));
+jest.mock('@microsoft/microsoft-graph-client', () => {
+  return {
+    Client: {
+      init: jest.fn().mockReturnValue({
+        api: jest.fn(() => ({
+          get: jest.fn(),
+          post: jest.fn(),
+          patch: jest.fn(),
+          delete: jest.fn()
+        }))
+      })
+    }
+  };
+});
 
 describe('microsoftTodoApi', () => {
   beforeEach(() => {
+    mockGraphApi = {
+      get: jest.fn(),
+      post: jest.fn(),
+      patch: jest.fn(),
+      delete: jest.fn()
+    };
     jest.clearAllMocks();
   });
 

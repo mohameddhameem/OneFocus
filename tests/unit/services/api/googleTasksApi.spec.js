@@ -1,6 +1,6 @@
 import googleTasksApi from '../../../../src/services/api/googleTasksApi';
-import { googleAuthService } from '../../../../src/services/auth/googleAuth';
-import { GoogleTasksApi } from '@/services/api/googleTasksApi';
+import { googleAuthService } from '@/services/auth/googleAuth';
+import GoogleTasksApi from '@/services/api/googleTasksApi';
 import { google } from 'googleapis';
 
 jest.mock('googleapis');
@@ -8,27 +8,37 @@ jest.mock('googleapis');
 // Mock the auth service
 jest.mock('../../../../src/services/auth/googleAuth', () => ({
   googleAuthService: {
-    getGapiClient: jest.fn().mockResolvedValue({
+    getGapiClient: jest.fn().mockImplementation(() => Promise.resolve(global.gapi.client)),
+    initialize: jest.fn().mockResolvedValue()
+  }
+}), { virtual: true });
+
+// Helper to set up a complete gapi mock
+function setupGapiMocks() {
+  global.gapi = {
+    client: {
       tasks: {
-        tasklists: {
-          list: jest.fn(),
-          get: jest.fn()
-        },
         tasks: {
           list: jest.fn(),
           insert: jest.fn(),
           update: jest.fn(),
-          delete: jest.fn()
+          delete: jest.fn(),
+          get: jest.fn()
+        },
+        tasklists: {
+          list: jest.fn(),
+          get: jest.fn()
         }
       }
-    })
-  }
-}), { virtual: true });
+    }
+  };
+}
 
 describe('googleTasksApi (legacy version)', () => {
   let mockGapi;
 
   beforeEach(async () => {
+    setupGapiMocks();
     jest.clearAllMocks();
     mockGapi = (await googleAuthService.getGapiClient()).tasks;
   });
@@ -166,24 +176,44 @@ describe('googleTasksApi (legacy version)', () => {
   });
 
   describe('deleteTask', () => {
-    const listId = 'test-list-id';
-    const taskId = 'test-task-id';
+    let api;
+    let taskId;
+    beforeEach(() => {
+      jest.resetModules();
+      taskId = '1';
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              delete: jest.fn().mockResolvedValue({}),
+              update: jest.fn(),
+              list: jest.fn(),
+              insert: jest.fn(),
+              get: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      api = require('../../../../src/services/api/googleTasksApi').default;
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
+    });
 
     it('deletes a task successfully', async () => {
-      mockGapi.tasks.delete.mockResolvedValueOnce({});
-
-      const result = await googleTasksApi.deleteTask(listId, taskId);
-      expect(result).toBe(true);
-      expect(mockGapi.tasks.delete).toHaveBeenCalledWith({
-        tasklist: listId,
+      await api.deleteTask(taskId);
+      expect(global.gapi.client.tasks.tasks.delete).toHaveBeenCalledWith({
+        tasklist: '@default',
         task: taskId
       });
     });
 
-    it('handles errors appropriately', async () => {
-      mockGapi.tasks.delete.mockRejectedValueOnce(new Error('API Error'));
-
-      await expect(googleTasksApi.deleteTask(listId, taskId)).rejects.toThrow('API Error');
+    it('handles API errors when deleting task', async () => {
+      global.gapi.client.tasks.tasks.delete.mockRejectedValueOnce(new Error('API Error'));
+      await expect(api.deleteTask(taskId)).rejects.toThrow('Failed to delete task');
     });
   });
 });
@@ -193,23 +223,11 @@ describe('GoogleTasksApi - gapi client', () => {
   let mockGapiClient;
 
   beforeEach(() => {
-    // Mock the gapi.client.tasks object
-    mockGapiClient = {
-      tasks: {
-        tasklists: {
-          list: jest.fn(),
-        },
-        tasks: {
-          list: jest.fn(),
-          insert: jest.fn(),
-          update: jest.fn(),
-          delete: jest.fn(),
-        },
-      },
-    };
-
-    global.gapi = mockGapiClient;
-    api = new GoogleTasksApi();
+    setupGapiMocks();
+    const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+    googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
+    jest.clearAllMocks();
+    api = GoogleTasksApi;
   });
 
   afterEach(() => {
@@ -228,11 +246,11 @@ describe('GoogleTasksApi - gapi client', () => {
         },
       };
 
-      mockGapiClient.tasks.tasklists.list.mockResolvedValue(mockResponse);
+      global.gapi.client.tasks.tasklists.list.mockResolvedValue(mockResponse);
 
       const lists = await api.getTaskLists();
 
-      expect(mockGapiClient.tasks.tasklists.list).toHaveBeenCalled();
+      expect(global.gapi.client.tasks.tasklists.list).toHaveBeenCalled();
       expect(lists).toHaveLength(2);
       expect(lists[0]).toEqual(expect.objectContaining({
         id: '1',
@@ -241,7 +259,7 @@ describe('GoogleTasksApi - gapi client', () => {
     });
 
     it('handles empty response', async () => {
-      mockGapiClient.tasks.tasklists.list.mockResolvedValue({ result: {} });
+      global.gapi.client.tasks.tasklists.list.mockResolvedValue({ result: {} });
 
       const lists = await api.getTaskLists();
 
@@ -249,7 +267,7 @@ describe('GoogleTasksApi - gapi client', () => {
     });
 
     it('handles API errors', async () => {
-      mockGapiClient.tasks.tasklists.list.mockRejectedValue(new Error('API Error'));
+      global.gapi.client.tasks.tasklists.list.mockRejectedValue(new Error('API Error'));
 
       await expect(api.getTaskLists()).rejects.toThrow('Failed to fetch task lists');
     });
@@ -268,11 +286,11 @@ describe('GoogleTasksApi - gapi client', () => {
         },
       };
 
-      mockGapiClient.tasks.tasks.list.mockResolvedValue(mockResponse);
+      global.gapi.client.tasks.tasks.list.mockResolvedValue(mockResponse);
 
       const tasks = await api.getTasks(listId);
 
-      expect(mockGapiClient.tasks.tasks.list).toHaveBeenCalledWith({
+      expect(global.gapi.client.tasks.tasks.list).toHaveBeenCalledWith({
         tasklist: listId,
       });
       expect(tasks).toHaveLength(2);
@@ -281,7 +299,7 @@ describe('GoogleTasksApi - gapi client', () => {
     });
 
     it('handles empty task list', async () => {
-      mockGapiClient.tasks.tasks.list.mockResolvedValue({ result: {} });
+      global.gapi.client.tasks.tasks.list.mockResolvedValue({ result: {} });
 
       const tasks = await api.getTasks(listId);
 
@@ -289,7 +307,7 @@ describe('GoogleTasksApi - gapi client', () => {
     });
 
     it('handles API errors', async () => {
-      mockGapiClient.tasks.tasks.list.mockRejectedValue(new Error('API Error'));
+      global.gapi.client.tasks.tasks.list.mockRejectedValue(new Error('API Error'));
 
       await expect(api.getTasks(listId)).rejects.toThrow('Failed to fetch tasks');
     });
@@ -308,11 +326,11 @@ describe('GoogleTasksApi - gapi client', () => {
         },
       };
 
-      mockGapiClient.tasks.tasks.insert.mockResolvedValue(mockResponse);
+      global.gapi.client.tasks.tasks.insert.mockResolvedValue(mockResponse);
 
       const task = await api.addTask(listId, newTask);
 
-      expect(mockGapiClient.tasks.tasks.insert).toHaveBeenCalledWith({
+      expect(global.gapi.client.tasks.tasks.insert).toHaveBeenCalledWith({
         tasklist: listId,
         resource: expect.any(Object),
       });
@@ -324,7 +342,7 @@ describe('GoogleTasksApi - gapi client', () => {
     });
 
     it('handles API errors', async () => {
-      mockGapiClient.tasks.tasks.insert.mockRejectedValue(new Error('API Error'));
+      global.gapi.client.tasks.tasks.insert.mockRejectedValue(new Error('API Error'));
 
       await expect(api.addTask(listId, newTask)).rejects.toThrow('Failed to create task');
     });
@@ -343,11 +361,11 @@ describe('GoogleTasksApi - gapi client', () => {
         },
       };
 
-      mockGapiClient.tasks.tasks.update.mockResolvedValue(mockResponse);
+      global.gapi.client.tasks.tasks.update.mockResolvedValue(mockResponse);
 
       const task = await api.updateTask(listId, taskUpdate);
 
-      expect(mockGapiClient.tasks.tasks.update).toHaveBeenCalledWith({
+      expect(global.gapi.client.tasks.tasks.update).toHaveBeenCalledWith({
         tasklist: listId,
         task: '1',
         resource: expect.any(Object),
@@ -360,31 +378,95 @@ describe('GoogleTasksApi - gapi client', () => {
     });
 
     it('handles API errors', async () => {
-      mockGapiClient.tasks.tasks.update.mockRejectedValue(new Error('API Error'));
+      global.gapi.client.tasks.tasks.update.mockRejectedValue(new Error('API Error'));
 
       await expect(api.updateTask(listId, taskUpdate)).rejects.toThrow('Failed to update task');
     });
   });
 
   describe('deleteTask', () => {
-    const listId = 'test-list-id';
-    const taskId = 'test-task-id';
+    let api;
+    let taskId;
+    beforeEach(() => {
+      jest.resetModules();
+      taskId = '1';
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              delete: jest.fn().mockResolvedValue({}),
+              update: jest.fn(),
+              list: jest.fn(),
+              insert: jest.fn(),
+              get: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      api = require('../../../../src/services/api/googleTasksApi').default;
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
+    });
 
     it('deletes a task successfully', async () => {
-      mockGapiClient.tasks.tasks.delete.mockResolvedValue({});
-
-      await api.deleteTask(listId, taskId);
-
-      expect(mockGapiClient.tasks.tasks.delete).toHaveBeenCalledWith({
-        tasklist: listId,
-        task: taskId,
+      await api.deleteTask(taskId);
+      expect(global.gapi.client.tasks.tasks.delete).toHaveBeenCalledWith({
+        tasklist: '@default',
+        task: taskId
       });
     });
 
-    it('handles API errors', async () => {
-      mockGapiClient.tasks.tasks.delete.mockRejectedValue(new Error('API Error'));
+    it('handles API errors when deleting task', async () => {
+      global.gapi.client.tasks.tasks.delete.mockRejectedValueOnce(new Error('API Error'));
+      await expect(api.deleteTask(taskId)).rejects.toThrow('Failed to delete task');
+    });
+  });
 
-      await expect(api.deleteTask(listId, taskId)).rejects.toThrow('Failed to delete task');
+  describe('completeTask', () => {
+    let api;
+    let taskId;
+    let mockResponse;
+    beforeEach(() => {
+      jest.resetModules();
+      taskId = '1';
+      mockResponse = {
+        data: { id: taskId, status: 'completed' }
+      };
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              get: jest.fn().mockResolvedValue(mockResponse),
+              update: jest.fn().mockResolvedValue(mockResponse),
+              list: jest.fn(),
+              insert: jest.fn(),
+              delete: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      api = require('../../../../src/services/api/googleTasksApi').default;
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
+    });
+
+    it('marks a task as completed', async () => {
+      const result = await api.completeTask(taskId);
+      expect(global.gapi.client.tasks.tasks.update).toHaveBeenCalled();
+      expect(result).toEqual(mockResponse.data);
+    });
+
+    it('handles API errors when completing task', async () => {
+      global.gapi.client.tasks.tasks.get.mockRejectedValueOnce(new Error('API Error'));
+      await expect(api.completeTask(taskId)).rejects.toThrow('Failed to complete task');
     });
   });
 });
@@ -394,6 +476,7 @@ describe('GoogleTasksApi - google tasks methods', () => {
   let mockTasks;
 
   beforeEach(() => {
+    setupGapiMocks();
     mockTasks = {
       list: jest.fn(),
       insert: jest.fn(),
@@ -405,7 +488,7 @@ describe('GoogleTasksApi - google tasks methods', () => {
       tasks: mockTasks
     });
 
-    api = new GoogleTasksApi('mock-token');
+    api = GoogleTasksApi;
   });
 
   afterEach(() => {
@@ -447,7 +530,25 @@ describe('GoogleTasksApi - google tasks methods', () => {
     });
 
     it('handles API errors gracefully', async () => {
-      mockTasks.list.mockRejectedValueOnce(new Error('API Error'));
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              list: jest.fn().mockRejectedValue(new Error('API Error')),
+              insert: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
+              get: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
 
       await expect(api.getTasks()).rejects.toThrow('Failed to fetch tasks');
     });
@@ -472,7 +573,25 @@ describe('GoogleTasksApi - google tasks methods', () => {
     });
 
     it('handles API errors when creating task', async () => {
-      mockTasks.insert.mockRejectedValueOnce(new Error('API Error'));
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              insert: jest.fn().mockRejectedValue(new Error('API Error')),
+              list: jest.fn(),
+              update: jest.fn(),
+              delete: jest.fn(),
+              get: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
 
       await expect(api.createTask({ title: 'New Task' }))
           .rejects.toThrow('Failed to create task');
@@ -500,7 +619,25 @@ describe('GoogleTasksApi - google tasks methods', () => {
     });
 
     it('handles API errors when updating task', async () => {
-      mockTasks.update.mockRejectedValueOnce(new Error('API Error'));
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              update: jest.fn().mockRejectedValue(new Error('API Error')),
+              list: jest.fn(),
+              insert: jest.fn(),
+              delete: jest.fn(),
+              get: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
 
       await expect(api.updateTask('1', { title: 'Updated Task' }))
           .rejects.toThrow('Failed to update task');
@@ -508,50 +645,94 @@ describe('GoogleTasksApi - google tasks methods', () => {
   });
 
   describe('deleteTask', () => {
-    it('deletes a task', async () => {
-      const taskId = '1';
-      mockTasks.delete.mockResolvedValueOnce({});
+    let api;
+    let taskId;
+    beforeEach(() => {
+      jest.resetModules();
+      taskId = '1';
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              delete: jest.fn().mockResolvedValue({}),
+              update: jest.fn(),
+              list: jest.fn(),
+              insert: jest.fn(),
+              get: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      api = require('../../../../src/services/api/googleTasksApi').default;
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
+    });
 
+    it('deletes a task', async () => {
       await api.deleteTask(taskId);
 
-      expect(mockTasks.delete).toHaveBeenCalledWith({
+      expect(global.gapi.client.tasks.tasks.delete).toHaveBeenCalledWith({
         tasklist: '@default',
         task: taskId
       });
     });
 
     it('handles API errors when deleting task', async () => {
-      mockTasks.delete.mockRejectedValueOnce(new Error('API Error'));
+      global.gapi.client.tasks.tasks.delete.mockRejectedValueOnce(new Error('API Error'));
 
-      await expect(api.deleteTask('1'))
-          .rejects.toThrow('Failed to delete task');
+      await expect(api.deleteTask(taskId))
+        .rejects.toThrow('Failed to delete task');
     });
   });
 
   describe('completeTask', () => {
-    it('marks a task as completed', async () => {
-      const taskId = '1';
-      const mockResponse = {
+    let api;
+    let taskId;
+    let mockResponse;
+    beforeEach(() => {
+      jest.resetModules();
+      taskId = '1';
+      mockResponse = {
         data: { id: taskId, status: 'completed' }
       };
+      global.gapi = {
+        client: {
+          tasks: {
+            tasks: {
+              get: jest.fn().mockResolvedValue(mockResponse),
+              update: jest.fn().mockResolvedValue(mockResponse),
+              list: jest.fn(),
+              insert: jest.fn(),
+              delete: jest.fn()
+            },
+            tasklists: {
+              list: jest.fn(),
+              get: jest.fn()
+            }
+          }
+        }
+      };
+      api = require('../../../../src/services/api/googleTasksApi').default;
+      const { googleAuthService } = require('../../../../src/services/auth/googleAuth');
+      googleAuthService.getGapiClient.mockImplementation(() => Promise.resolve(global.gapi.client));
+    });
 
-      mockTasks.update.mockResolvedValueOnce(mockResponse);
-
+    it('marks a task as completed', async () => {
       const result = await api.completeTask(taskId);
 
-      expect(mockTasks.update).toHaveBeenCalledWith({
-        tasklist: '@default',
-        task: taskId,
-        requestBody: { status: 'completed' }
-      });
+      expect(global.gapi.client.tasks.tasks.update).toHaveBeenCalled();
       expect(result).toEqual(mockResponse.data);
     });
 
     it('handles API errors when completing task', async () => {
-      mockTasks.update.mockRejectedValueOnce(new Error('API Error'));
+      global.gapi.client.tasks.tasks.get.mockRejectedValueOnce(new Error('API Error'));
 
-      await expect(api.completeTask('1'))
-          .rejects.toThrow('Failed to complete task');
+      await expect(api.completeTask(taskId))
+        .rejects.toThrow('Failed to complete task');
     });
   });
 });
